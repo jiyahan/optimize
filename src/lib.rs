@@ -34,7 +34,6 @@
 
 #![deny(missing_docs)]
 
-#[macro_use(s)]
 extern crate ndarray;
 
 #[macro_use]

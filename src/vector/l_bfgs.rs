@@ -30,15 +30,19 @@ use std::collections::VecDeque;
 ///
 /// // The function that is to be minimized, and an exact gradient function
 /// let center = arr1(&[0.9, 1.3, 0.5]);
-/// let f = |x: ArrayView1<f64>| (&x - &center).mapv(|xi| xi.powi(4)).scalar_sum();
-/// let g = |x: ArrayView1<f64>| 4.0 * (&x - &center).mapv(|xi| xi.powi(3));
+/// let f = |x: ArrayView1<f64>| (&x - &center).mapv(|xi| -(-xi * xi).exp()).sum();
+/// let g = |x: ArrayView1<f64>| {
+///     -2.0 * (&x - &center).mapv(|xi| -(-xi * xi).exp()) * &(&x - &center)
+/// };
 /// let x0 = Array1::ones(center.len());
 ///
 /// // do the actual minimization
 /// let xmin = min.minimize(&f, &g, x0.view());
 ///
 /// println!("{:?}", xmin);
-/// assert!(xmin.all_close(&center, 1e-4))
+/// xmin.iter().zip(center.iter()).for_each(|(x, c)| {
+///     assert!((*x - *c).abs() < 1e-5);
+/// });
 /// # }
 /// ```
 ///
@@ -57,14 +61,16 @@ use std::collections::VecDeque;
 ///
 /// // The function that is to be minimized, and an exact gradient function
 /// let center = arr1(&[0.9, 1.3, 0.5]);
-/// let f = |x: ArrayView1<f64>| (&x - &center).mapv(|xi| xi.powi(4)).scalar_sum();
+/// let f = |x: ArrayView1<f64>| (&x - &center).mapv(|xi| -(-xi * xi).exp()).sum();
 /// let x0 = Array1::ones(center.len());
 ///
 /// // do the actual minimization
 /// let xmin = min.minimize_approx_grad(&f, x0.view());
 ///
 /// println!("{:?}", xmin);
-/// assert!(xmin.all_close(&center, 1e-4))
+/// xmin.iter().zip(center.iter()).for_each(|(x, c)| {
+///     assert!((*x - *c).abs() < 1e-5);
+/// });
 /// # }
 /// ```
 #[derive(Builder, Debug)]
@@ -110,7 +116,7 @@ impl LBFGS {
     {
         let eps = Array1::ones(x0.len()) * 1e-9;
         let eps_view = eps.view();
-        let grad = |x: ArrayView1<f64>| ::utils::approx_fprime(x, &func, eps_view);
+        let grad = |x: ArrayView1<f64>| crate::utils::approx_fprime(x, &func, eps_view);
         self.minimize(&func, &grad, x0)
     }
 
@@ -132,7 +138,7 @@ impl LBFGS {
         loop {
             let dir = self.quasi_update(&g, &hist);
             let a = {
-                let min = ::scalar::GoldenRatioBuilder::default()
+                let min = crate::scalar::GoldenRatioBuilder::default()
                     .xtol(self.xtol)
                     .build()
                     .unwrap();
@@ -154,7 +160,7 @@ impl LBFGS {
             if r.is_nan()
                 || iter > self.max_iter
                 || feval_count > self.max_feval
-                || g_new.mapv(f64::abs).scalar_sum() < self.gtol
+                || g_new.mapv(f64::abs).sum() < self.gtol
             {
                 break;
             }
@@ -210,24 +216,30 @@ mod test {
     fn minimize() {
         let center = arr1(&[0.9, 1.3, 0.5]);
         let min = LBFGSBuilder::default().build().unwrap();
-        let f = |x: ArrayView1<f64>| (&x - &center).mapv(|xi| -(-xi * xi).exp()).scalar_sum();
+        let f = |x: ArrayView1<f64>| (&x - &center).mapv(|xi| -(-xi * xi).exp()).sum();
         let g = |x: ArrayView1<f64>| {
             -2.0 * (&x - &center).mapv(|xi| -(-xi * xi).exp()) * &(&x - &center)
         };
         let x0 = Array1::ones(center.len());
         let xmin = min.minimize(&f, &g, x0.view());
         println!("{:?}", xmin);
-        assert!(xmin.all_close(&center, 1e-5))
+        //assert!(xmin.all_close(&center, 1e-5))
+        xmin.iter().zip(center.iter()).for_each(|(x, c)| {
+            assert!((*x - *c).abs() < 1e-5);
+        });
     }
 
     #[test]
     fn minimize_approx() {
         let center = arr1(&[0.9, 1.3, 0.5]);
         let min = LBFGSBuilder::default().build().unwrap();
-        let f = |x: ArrayView1<f64>| (&x - &center).mapv(|xi| -(-xi * xi).exp()).scalar_sum();
+        let f = |x: ArrayView1<f64>| (&x - &center).mapv(|xi| -(-xi * xi).exp()).sum();
         let x0 = Array1::ones(center.len());
         let xmin = min.minimize_approx_grad(&f, x0.view());
         println!("{:?}", xmin);
-        assert!(xmin.all_close(&center, 1e-5))
+        //assert!(xmin.all_close(&center, 1e-5))
+        xmin.iter().zip(center.iter()).for_each(|(x, c)| {
+            assert!((*x - *c).abs() < 1e-5);
+        });
     }
 }

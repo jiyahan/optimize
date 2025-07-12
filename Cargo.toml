@@ -2,6 +2,7 @@
 name = "optimize"
 version = "0.1.0"
 authors = ["Tomas Ostasevicius <t.ostasevicius@gmail.com>"]
+edition = "2024"
 
 description = "Crate for numerical optimization"
 readme = "README.md"
@@ -18,7 +19,7 @@ license = "MIT/Apache-2.0"
 travis-ci = { repository = "to266/optimize" }
 
 [dependencies]
-ndarray = "0.11"
+ndarray = "0.16.1"
 num-traits = "0.2"
-float-cmp = "0.4"
-derive_builder = "0.5"
+float-cmp = "0.10.0"
+derive_builder = "0.20.2"

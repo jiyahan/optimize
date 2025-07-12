@@ -39,8 +39,8 @@ mod tests {
         let res = approx_fprime(x.view(), function, eps_ar.view());
 
         println!("Res: {}", res);
-        assert!(res[0].approx_eq(&2.0, 1e-4, 10));
-        assert!(res[1].approx_eq(&400.0, 1e-3, 10));
+        assert!(res[0].approx_eq(2.0, (1e-4, 10)));
+        assert!(res[1].approx_eq(400.0, (1e-3, 10)));
     }
 
 }

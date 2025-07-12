@@ -34,9 +34,8 @@
 //! println!("res: {}", res);
 //! ```
 
-use float_cmp::ApproxOrdUlps;
 use ndarray::prelude::*;
-use ::utils::WrappedFunction;
+use crate::utils::WrappedFunction;
 
 type Simplex = Vec<(f64, Array1<f64>)>;
 
@@ -182,7 +181,7 @@ impl NelderMead {
         iterations > maxiter 
         || nfeval > maxfun 
         || ( simplex[n-1].0 - simplex[0].0 < self.ftol 
-             && (&simplex[n-1].1 - &simplex[0].1).mapv(f64::abs).scalar_sum() < n as f64 * self.xtol )
+             && (&simplex[n-1].1 - &simplex[0].1).mapv(f64::abs).sum() < n as f64 * self.xtol )
     }
 
     /// Update the centroid effiently, knowing only one value changed.
@@ -240,7 +239,17 @@ impl NelderMead {
     /// After a shrinkage, the runtime is O(n log n).
     #[inline]
     fn order_simplex(&self, simplex: &mut Simplex) {
-        simplex.sort_unstable_by(|&(fa, _), &(fb, _)| fa.approx_cmp_ulps(&fb, self.ulps));
+        let ulps = self.ulps;
+        simplex.sort_unstable_by(|&(fa, _), &(fb, _)| {
+            use float_cmp::ApproxEqUlps;
+            if fa.approx_eq_ulps(&fb, ulps) {
+                std::cmp::Ordering::Equal
+            } else if fa < fb {
+                std::cmp::Ordering::Less
+            } else {
+                std::cmp::Ordering::Greater
+            }
+        });
     }
 }
 
@@ -262,8 +271,8 @@ mod tests {
         let args = Array::from_vec(vec![3.0, -8.3]);
         let res = minimizer.minimize(&function, args.view());
         println!("res: {}", res);
-        assert!(res[0].approx_eq(&1.0, 1e-4, 10));
-        assert!(res[1].approx_eq(&1.0, 1e-4, 10));
+        assert!(res[0].approx_eq(1.0, (1e-4, 10)));
+        assert!(res[1].approx_eq(1.0, (1e-4, 10)));
     }
 
 }
